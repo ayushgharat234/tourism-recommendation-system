@@ -1,4 +1,5 @@
 import overpy
+from overpy import Overpass
 import pandas as pd
 from typing import List, Dict
 import logging
