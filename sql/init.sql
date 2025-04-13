@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS locations (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create attractions table for specific tourist spots
+-- Create attractions table
 CREATE TABLE IF NOT EXISTS attractions (
     id SERIAL PRIMARY KEY,
     location_id INTEGER REFERENCES locations(id),
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS amenities (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create events table for seasonal/special events
+-- Create events table
 CREATE TABLE IF NOT EXISTS events (
     id SERIAL PRIMARY KEY,
     location_id INTEGER REFERENCES locations(id),
@@ -108,39 +108,43 @@ CREATE TABLE IF NOT EXISTS visit_history (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create spatial index on locations
+-- Drop and recreate spatial index safely
+DROP INDEX IF EXISTS idx_locations_position;
 CREATE INDEX idx_locations_position ON locations USING GIST (
     ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
 );
 
 -- Create indexes for common queries
-CREATE INDEX idx_locations_category ON locations(category);
-CREATE INDEX idx_locations_rating ON locations(rating);
-CREATE INDEX idx_reviews_location_id ON reviews(location_id);
-CREATE INDEX idx_reviews_rating ON reviews(rating);
-CREATE INDEX idx_events_dates ON events(start_date, end_date);
-CREATE INDEX idx_weather_location_date ON weather_data(location_id, date);
+CREATE INDEX IF NOT EXISTS idx_locations_category ON locations(category);
+CREATE INDEX IF NOT EXISTS idx_locations_rating ON locations(rating);
+CREATE INDEX IF NOT EXISTS idx_reviews_location_id ON reviews(location_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_rating ON reviews(rating);
+CREATE INDEX IF NOT EXISTS idx_events_dates ON events(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_weather_location_date ON weather_data(location_id, date);
 
--- Create function to update updated_at timestamp
+-- Create function to auto-update `updated_at`
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE 'plpgsql';
 
--- Create triggers for updated_at
+-- Drop and recreate triggers
+DROP TRIGGER IF EXISTS update_locations_updated_at ON locations;
 CREATE TRIGGER update_locations_updated_at
     BEFORE UPDATE ON locations
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_attractions_updated_at ON attractions;
 CREATE TRIGGER update_attractions_updated_at
     BEFORE UPDATE ON attractions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
 CREATE TRIGGER update_user_preferences_updated_at
     BEFORE UPDATE ON user_preferences
     FOR EACH ROW
@@ -148,4 +152,4 @@ CREATE TRIGGER update_user_preferences_updated_at
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO airflow;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO airflow; 
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO airflow;
