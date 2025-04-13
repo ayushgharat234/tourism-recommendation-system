@@ -6,7 +6,6 @@ from src.extractors.ai_generator import AIContentGenerator
 class TestAIContentGenerator(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures before each test method."""
-        # Mock environment variable
         os.environ['OPENAI_API_KEY'] = 'test_key'
         self.generator = AIContentGenerator()
         
@@ -18,11 +17,10 @@ class TestAIContentGenerator(unittest.TestCase):
             'addr_city': 'Agra',
             'addr_state': 'Uttar Pradesh'
         }
-        
-    @patch('openai.ChatCompletion.create')
+
+    @patch('src.extractors.ai_generator.openai.ChatCompletion.create')  # ✅ Correct patch path
     def test_generate_enhanced_description(self, mock_openai):
         """Test generation of enhanced descriptions."""
-        # Mock OpenAI response
         mock_response = MagicMock()
         mock_response.choices = [
             MagicMock(
@@ -32,9 +30,9 @@ class TestAIContentGenerator(unittest.TestCase):
             )
         ]
         mock_openai.return_value = mock_response
-        
+
         result = self.generator.generate_enhanced_description(self.test_location)
-        
+
         self.assertIsInstance(result, dict)
         self.assertEqual(result['location_id'], 1234)
         self.assertIn('description', result)
@@ -42,11 +40,10 @@ class TestAIContentGenerator(unittest.TestCase):
         self.assertIn('cultural_significance', result)
         self.assertIn('key_attractions', result)
         self.assertIn('travel_tips', result)
-        
-    @patch('openai.ChatCompletion.create')
+
+    @patch('src.extractors.ai_generator.openai.ChatCompletion.create')  # ✅ Same fix here
     def test_generate_interaction_data(self, mock_openai):
         """Test generation of interaction data."""
-        # Mock OpenAI response
         mock_response = MagicMock()
         mock_response.choices = [
             MagicMock(
@@ -56,9 +53,9 @@ class TestAIContentGenerator(unittest.TestCase):
             )
         ]
         mock_openai.return_value = mock_response
-        
+
         result = self.generator.generate_interaction_data(self.test_location)
-        
+
         self.assertIsInstance(result, dict)
         self.assertEqual(result['location_id'], 1234)
         self.assertIsInstance(result['avg_rating'], float)
@@ -66,12 +63,12 @@ class TestAIContentGenerator(unittest.TestCase):
         self.assertIn('common_activities', result)
         self.assertIn('typical_duration', result)
         self.assertIn('peak_hours', result)
-        
+
     def test_missing_api_key(self):
         """Test handling of missing API key."""
         os.environ.pop('OPENAI_API_KEY', None)
         with self.assertRaises(ValueError):
             AIContentGenerator()
-            
+
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()

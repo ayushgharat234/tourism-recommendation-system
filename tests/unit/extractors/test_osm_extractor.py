@@ -14,8 +14,8 @@ class TestOSMExtractor(unittest.TestCase):
         self.assertIsInstance(query, str)
         self.assertIn('area["name"="India"]', query)
         self.assertIn('tourism', query)
-        
-    @patch('overpy.Overpass')
+
+    @patch('src.extractors.osm_extractor.Overpass')  # ✅ Correctly patched
     def test_extract_locations(self, mock_overpass):
         """Test location extraction with mocked Overpass API."""
         # Mock API response
@@ -29,20 +29,20 @@ class TestOSMExtractor(unittest.TestCase):
             "tourism": "monument",
             "historic": "yes"
         }
-        
+
         mock_api.query.return_value.nodes = [mock_node]
         mock_api.query.return_value.ways = []
         mock_overpass.return_value = mock_api
-        
+
         # Test extraction
         locations = self.extractor.extract_locations()
-        
+
         self.assertIsInstance(locations, list)
         self.assertEqual(len(locations), 1)
         self.assertEqual(locations[0]['osm_id'], 1234)
         self.assertEqual(locations[0]['name'], "Taj Mahal")
         self.assertEqual(locations[0]['tourism_type'], "monument")
-        
+
     def test_create_dataframe(self):
         """Test conversion of locations to DataFrame."""
         test_locations = [{
@@ -57,13 +57,13 @@ class TestOSMExtractor(unittest.TestCase):
                 'tourism': 'monument'
             }
         }]
-        
+
         df = self.extractor.create_dataframe(test_locations)
-        
+
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual(len(df), 1)
         self.assertEqual(df.iloc[0]['osm_id'], 1234)
         self.assertEqual(df.iloc[0]['name'], 'Taj Mahal')
-        
+
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()
