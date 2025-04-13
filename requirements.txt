@@ -213,3 +213,4 @@ moderngl==5.12.0
 moderngl-window==3.0.3
 openai
 overpy
+python-dotenv==0.21.0
