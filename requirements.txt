@@ -153,7 +153,7 @@ inflection==0.5.1
 iniconfig==2.1.0
 intel-openmp==2021.4.0
 ipykernel==6.29.5
-ipython==8.28.0
+ipython==8.18.1
 isoduration==20.11.0
 isort==6.0.1
 isosurfaces==0.1.2
