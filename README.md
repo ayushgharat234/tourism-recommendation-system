@@ -85,4 +85,20 @@ The pipeline creates the following tables in PostgreSQL:
 
 ## Contributing
 
-Feel free to contribute by opening issues or submitting pull requests. 
+Feel free to contribute by opening issues or submitting pull requests.
+
+## Testing
+
+The project uses pytest for testing. To run tests locally:
+
+```bash
+pip install -r requirements.txt
+pytest tests/ --cov=src/
+```
+
+## CI/CD Pipeline
+
+The project uses GitHub Actions for:
+- Running automated tests
+- Building and pushing Docker images to Docker Hub
+- Code coverage reporting 
