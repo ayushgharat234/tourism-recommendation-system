@@ -1,0 +1,1 @@
+"""Data extraction modules for the tourism recommendation system.""" 

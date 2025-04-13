@@ -1,8 +1,9 @@
 import os
 import openai
+import json
 from typing import Dict, Optional
 from dotenv import load_dotenv
-from ..utils.logger import ai_logger
+from src.utils.logger import ai_logger
 
 load_dotenv()
 
@@ -48,7 +49,7 @@ class AIContentGenerator:
             )
             
             # Extract the JSON response
-            ai_content = eval(response.choices[0].message.content)
+            ai_content = json.loads(response.choices[0].message.content)
             ai_content['location_id'] = location_data.get('osm_id')
             ai_logger.info(f"Successfully generated description for {name}")
             return ai_content
@@ -85,7 +86,7 @@ class AIContentGenerator:
                 max_tokens=300
             )
             
-            interaction_data = eval(response.choices[0].message.content)
+            interaction_data = json.loads(response.choices[0].message.content)
             interaction_data['location_id'] = location_data.get('osm_id')
             ai_logger.info(f"Successfully generated interaction data for {name}")
             return interaction_data
