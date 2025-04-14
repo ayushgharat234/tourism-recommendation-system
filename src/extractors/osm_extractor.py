@@ -6,7 +6,7 @@ import logging
 
 class OSMExtractor:
     def __init__(self):
-        self.api = overpy.Overpass()
+        self.api = Overpass()
         
     def get_tourism_query(self) -> str:
         """Generate Overpass QL query for tourism locations in India."""

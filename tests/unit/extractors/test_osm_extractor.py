@@ -15,7 +15,7 @@ class TestOSMExtractor(unittest.TestCase):
         self.assertIn('area["name"="India"]', query)
         self.assertIn('tourism', query)
 
-    @patch('src.extractors.osm_extractor.Overpass')  # ✅ Correctly patched
+    @patch('src.extractors.osm_extractor.Overpass')  # patch works before instantiation
     def test_extract_locations(self, mock_overpass):
         """Test location extraction with mocked Overpass API."""
         # Mock API response
@@ -30,17 +30,14 @@ class TestOSMExtractor(unittest.TestCase):
             "historic": "yes"
         }
 
-        # Ensure only one node is in the response
         mock_api.query.return_value.nodes = [mock_node]
         mock_api.query.return_value.ways = []
-
-        # Return mock API response when Overpass is called
         mock_overpass.return_value = mock_api
 
-        # Test extraction
-        locations = self.extractor.extract_locations()
+        # Instantiate *after* patch
+        extractor = OSMExtractor()
+        locations = extractor.extract_locations()
 
-        # Ensure that the returned locations list has exactly 1 location
         self.assertIsInstance(locations, list)
         self.assertEqual(len(locations), 1)
 
