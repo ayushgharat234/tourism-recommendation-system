@@ -214,3 +214,7 @@ moderngl-window==3.0.3
 openai
 overpy
 python-dotenv==0.21.0
+apache-airflow-providers-postgres
+apache-airflow[postgres]
+psycopg2-binary
+wirerope

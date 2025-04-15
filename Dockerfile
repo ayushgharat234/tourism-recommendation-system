@@ -15,7 +15,7 @@ USER airflow
 
 # Copy and install Python dependencies
 COPY requirements.txt /opt/airflow/requirements.txt
-RUN pip install --no-cache-dir -r /opt/airflow/requirements.txt
+RUN pip install -r /opt/airflow/requirements.txt
 
 # Add custom Airflow plugins/modules
 COPY ./src /opt/airflow/src
