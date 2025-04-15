@@ -1,8 +1,15 @@
 from datetime import datetime, timedelta
 import pandas as pd
+import os
+import sys
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
+
+# Ensure custom module path is available
+dag_folder = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(dag_folder, '..')  # adjust if needed
+sys.path.append(project_root)
 
 # Import custom modules
 from src.extractors.osm_extractor import OSMExtractor
@@ -10,6 +17,7 @@ from src.extractors.ai_generator import AIContentGenerator
 from src.transformers.data_transformer import DataTransformer
 from src.loaders.db_loader import DatabaseLoader
 
+# Default DAG arguments
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
@@ -19,14 +27,16 @@ default_args = {
     'retry_delay': timedelta(minutes=5)
 }
 
+# Task 1: Extract OSM data
 def extract_osm_data(**context):
     extractor = OSMExtractor()
     locations = extractor.extract_locations()
-    context['task_instance'].xcom_push(key='locations', value=locations)
+    context['ti'].xcom_push(key='locations', value=locations)
     return f"Extracted {len(locations)} locations"
 
+# Task 2: Generate AI content
 def generate_ai_content(**context):
-    locations = context['task_instance'].xcom_pull(key='locations', task_ids='extract_osm_data')
+    locations = context['ti'].xcom_pull(key='locations', task_ids='extract_osm_data')
     generator = AIContentGenerator()
     enhanced_data = []
 
@@ -40,23 +50,26 @@ def generate_ai_content(**context):
                 'interaction': interaction
             })
 
-    context['task_instance'].xcom_push(key='enhanced_data', value=enhanced_data)
+    context['ti'].xcom_push(key='enhanced_data', value=enhanced_data)
     return f"Generated content for {len(enhanced_data)} locations"
 
+# Task 3: Transform data
 def transform_data(**context):
-    enhanced_data = context['task_instance'].xcom_pull(key='enhanced_data', task_ids='generate_ai_content')
+    enhanced_data = context['ti'].xcom_pull(key='enhanced_data', task_ids='generate_ai_content')
     transformer = DataTransformer()
 
+    # Clean location data
     locations_data = [item['location'] for item in enhanced_data]
     locations_df = transformer.clean_locations_data(pd.DataFrame(locations_data))
 
-    flattened_content = []
+    # Flatten for AI processing
+    flattened = []
     for item in enhanced_data:
         location = item.get("location", {})
         description = item.get("description", {})
         interaction = item.get("interaction", {})
 
-        flattened_content.append({
+        flattened.append({
             "location_id": location.get("osm_id"),
             "description": description.get("text", ""),
             "tags": location.get("tags", ""),
@@ -71,35 +84,27 @@ def transform_data(**context):
             "peak_hours": interaction.get("peak_hours", "")
         })
 
-    desc_df, inter_df = transformer.process_ai_content(flattened_content)
+    desc_df, inter_df = transformer.process_ai_content(flattened)
 
-    # Store all dataframes in XCom as JSON
-    context['task_instance'].xcom_push(key='locations_df', value=locations_df.to_json())
-    context['task_instance'].xcom_push(key='descriptions_df', value=desc_df.to_json())
-    context['task_instance'].xcom_push(key='interactions_df', value=inter_df.to_json())
+    context['ti'].xcom_push(key='locations_df', value=locations_df.to_json())
+    context['ti'].xcom_push(key='descriptions_df', value=desc_df.to_json())
+    context['ti'].xcom_push(key='interactions_df', value=inter_df.to_json())
+    return f"Transformed {len(flattened)} records"
 
-    return f"Transformed {len(flattened_content)} records"
-
+# Task 4: Load data
 def load_data(**context):
     loader = DatabaseLoader()
 
-    # Retrieve and deserialize JSON DataFrames
-    locations_json = context['task_instance'].xcom_pull(key='locations_df', task_ids='transform_data')
-    descriptions_json = context['task_instance'].xcom_pull(key='descriptions_df', task_ids='transform_data')
-    interactions_json = context['task_instance'].xcom_pull(key='interactions_df', task_ids='transform_data')
+    locations_df = pd.read_json(context['ti'].xcom_pull(key='locations_df', task_ids='transform_data'))
+    descriptions_df = pd.read_json(context['ti'].xcom_pull(key='descriptions_df', task_ids='transform_data'))
+    interactions_df = pd.read_json(context['ti'].xcom_pull(key='interactions_df', task_ids='transform_data'))
 
-    locations_df = pd.read_json(locations_json)
-    descriptions_df = pd.read_json(descriptions_json)
-    interactions_df = pd.read_json(interactions_json)
-
-    # Load into DB
     loader.load_locations(locations_df)
     loader.load_descriptions(descriptions_df)
     loader.load_interactions(interactions_df)
-
     return "Data loaded successfully"
 
-# Define DAG
+# DAG definition
 dag = DAG(
     'tourism_etl',
     default_args=default_args,
@@ -110,8 +115,11 @@ dag = DAG(
     tags=['tourism']
 )
 
-# Read SQL schema from file
-with open('/opt/airflow/sql/init.sql', 'r') as f:
+# SQL init schema loading (safe)
+sql_path = os.path.join(project_root, 'sql', 'init.sql')
+if not os.path.exists(sql_path):
+    raise FileNotFoundError(f"SQL init file not found: {sql_path}")
+with open(sql_path, 'r') as f:
     sql_content = f.read()
 
 # Define tasks
@@ -150,5 +158,5 @@ load = PythonOperator(
     dag=dag
 )
 
-# Task pipeline
+# DAG Task flow
 create_tables >> extract_data >> generate_content >> transform >> load
